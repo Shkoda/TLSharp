@@ -14,9 +14,11 @@ namespace TLSharp.Core
 
     public class FileSessionStore : ISessionStore
     {
+        public static string MyDocuments { get; } = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+        private static string SessionPath(string sessionId) => Path.Combine(MyDocuments,$"{sessionId}.dat");
         public void Save(Session session)
         {
-            using (var stream = new FileStream($"{session.SessionUserId}.dat", FileMode.OpenOrCreate))
+            using (var stream = new FileStream(SessionPath(session.SessionUserId), FileMode.OpenOrCreate))
             {
                 var result = session.ToBytes();
                 stream.Write(result, 0, result.Length);
@@ -25,7 +27,7 @@ namespace TLSharp.Core
 
         public Session Load(string sessionUserId)
         {
-            var sessionFileName = $"{sessionUserId}.dat";
+            var sessionFileName = SessionPath(sessionUserId);
             if (!File.Exists(sessionFileName))
                 return null;
 
