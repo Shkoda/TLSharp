@@ -45,6 +45,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Auth\Authenticator.cs" />
+    <Compile Include="Auth\SecureChat\SecureChatStarter.cs" />
     <Compile Include="Auth\Step1_PQRequest.cs" />
     <Compile Include="Auth\Step2_DHExchange.cs" />
     <Compile Include="Auth\Step3_CompleteDHExchange.cs" />

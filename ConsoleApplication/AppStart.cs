@@ -21,9 +21,7 @@ namespace ConsoleApplication
             var client = new TelegramClient(creds.AppId, creds.AppHash);
             await client.ConnectAsync();
             if (!client.IsUserAuthorized())
-            {
-              
-                
+            {           
                 Console.WriteLine($"send code to {creds.PhoneNumber}");
             
                 var hash = await client.SendCodeRequestAsync(creds.PhoneNumber);
@@ -33,31 +31,28 @@ namespace ConsoleApplication
                 var user = await client.MakeAuthAsync(creds.PhoneNumber, hash, code);
                 Console.WriteLine($"auth as @{user.username} [{user.first_name}]");
             }
-      
 
-            try
-            {
-                //get available contacts
-                var result = await client.GetContactsAsync();
+      
+            Console.WriteLine($"starting secret chat...");
+            await client.StartSecretChat();
+        //    await ShowContacts(client);
+
+            Console.WriteLine($"Press enter to terminate...");
+            Console.ReadLine();
+        }
+
+        private static async Task ShowContacts(TelegramClient client)
+        {
+            var result = await client.GetContactsAsync();
+
+
+            result.users.lists
+                .Where(x => x.GetType() == typeof(TLUser))
+                .Cast<TLUser>()
+                  .ToList()
+                 .ForEach(u => Console.WriteLine($"@{u.username} [{u.first_name}] {u.phone} {u.id}"));
 
             
-                    result.users.lists
-                        .Where(x => x.GetType() == typeof(TLUser))
-                        .Cast<TLUser>()
-                          .ToList()
-                         .ForEach(u => Console.WriteLine($"@{u.username} [{u.first_name}] {u.phone}"));
-                  
-
-
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e.Message);
-                Console.WriteLine(e.StackTrace);
-                throw;
-            }
-        
-
         }
     }
 }

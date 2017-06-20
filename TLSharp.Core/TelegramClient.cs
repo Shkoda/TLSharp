@@ -12,6 +12,7 @@ using TeleSharp.TL.Help;
 using TeleSharp.TL.Messages;
 using TeleSharp.TL.Upload;
 using TLSharp.Core.Auth;
+using TLSharp.Core.Auth.SecureChat;
 using TLSharp.Core.MTProto.Crypto;
 using TLSharp.Core.Network;
 using TLSharp.Core.Utils;
@@ -46,20 +47,27 @@ namespace TLSharp.Core
             _apiId = apiId;
             _handler = handler;
 
-            _session = Session.TryLoadOrCreateNew(store, sessionUserId);
-            _transport = new TcpTransport(_session.ServerAddress, _session.Port, _handler);
+            Session = Session.TryLoadOrCreateNew(store, sessionUserId);
+            _transport = new TcpTransport(Session.ServerAddress, Session.Port, _handler);
+        }
+
+        public async Task<bool> StartSecretChat()
+        {
+            await SecureChatStarter.StartSercretChat(_transport, Session, this);
+
+            return true;
         }
 
         public async Task<bool> ConnectAsync(bool reconnect = false)
         {
-            if (_session.AuthKey == null || reconnect)
+            if (Session.AuthKey == null || reconnect)
             {
                 var result = await Authenticator.DoAuthentication(_transport);
-                _session.AuthKey = result.AuthKey;
-                _session.TimeOffset = result.TimeOffset;
+                Session.AuthKey = result.AuthKey;
+                Session.TimeOffset = result.TimeOffset;
             }
 
-            _sender = new MtProtoSender(_transport, _session);
+            _sender = new MtProtoSender(_transport, Session);
 
             //set-up layer
             var config = new TLRequestGetConfig();
@@ -89,15 +97,15 @@ namespace TLSharp.Core
             var dc = dcOptions.First(d => d.id == dcId);
 
             _transport = new TcpTransport(dc.ip_address, dc.port, _handler);
-            _session.ServerAddress = dc.ip_address;
-            _session.Port = dc.port;
+            Session.ServerAddress = dc.ip_address;
+            Session.Port = dc.port;
 
             await ConnectAsync(true);
         }
 
         public bool IsUserAuthorized()
         {
-            return _session.TLUser != null;
+            return Session.TLUser != null;
         }
 
         public async Task<bool> IsPhoneRegisteredAsync(string phoneNumber)
@@ -323,10 +331,10 @@ namespace TLSharp.Core
             {
                 var exportedAuth = await SendRequestAsync<TLExportedAuthorization>(new TLRequestExportAuthorization() { dc_id = ex.DC });
 
-                var authKey = _session.AuthKey;
-                var timeOffset = _session.TimeOffset;
-                var serverAddress = _session.ServerAddress;
-                var serverPort = _session.Port;
+                var authKey = Session.AuthKey;
+                var timeOffset = Session.TimeOffset;
+                var serverAddress = Session.ServerAddress;
+                var serverPort = Session.Port;
 
                 await ReconnectToDcAsync(ex.DC);
                 var auth = await SendRequestAsync<TLAuthorization>(new TLRequestImportAuthorization
@@ -336,11 +344,11 @@ namespace TLSharp.Core
                 });
                 result = await GetFile(location, filePartSize, offset);
 
-                _session.AuthKey = authKey;
-                _session.TimeOffset = timeOffset;
+                Session.AuthKey = authKey;
+                Session.TimeOffset = timeOffset;
                 _transport = new TcpTransport(serverAddress, serverPort);
-                _session.ServerAddress = serverAddress;
-                _session.Port = serverPort;
+                Session.ServerAddress = serverAddress;
+                Session.Port = serverPort;
                 await ConnectAsync();
 
             }
@@ -387,10 +395,10 @@ namespace TLSharp.Core
 
         private void OnUserAuthenticated(TLUser TLUser)
         {
-            _session.TLUser = TLUser;
-            _session.SessionExpires = int.MaxValue;
+            Session.TLUser = TLUser;
+            Session.SessionExpires = int.MaxValue;
 
-            _session.Save();
+            Session.Save();
         }
 
         public bool IsConnected
@@ -400,6 +408,19 @@ namespace TLSharp.Core
                 if (_transport == null)
                     return false;
                 return _transport.IsConnected;
+            }
+        }
+
+        public Session Session
+        {
+            get
+            {
+                return _session;
+            }
+
+            set
+            {
+                _session = value;
             }
         }
 

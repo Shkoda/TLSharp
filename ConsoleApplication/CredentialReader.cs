@@ -11,6 +11,8 @@ namespace ConsoleApplication
 
         public static AppCredentials Load()
         {
+            Console.WriteLine($"load creds from {AppConfigPath}");
+    
            var text =  File.ReadAllText(AppConfigPath);
             return JsonConvert.DeserializeObject<AppCredentials>(text);
         }

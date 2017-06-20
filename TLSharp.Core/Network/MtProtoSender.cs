@@ -148,6 +148,8 @@ namespace TLSharp.Core.Network
             return null;
         }
 
+
+   
         public async Task SendPingAsync()
         {
             var pingRequest = new PingRequest();
