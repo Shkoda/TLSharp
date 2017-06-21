@@ -7,19 +7,20 @@ using System.Threading.Tasks;
 using TeleSharp.TL;
 namespace TeleSharp.TL
 {
-	[TLObject(1632839530)]
-    public class TLChatPhoto : TLAbsChatPhoto
+	[TLObject(1877046107)]
+    public class TLDecryptedMessageActionAcceptKey : TLAbsDecryptedMessageAction
     {
         public override int Constructor
         {
             get
             {
-                return 1632839530;
+                return 1877046107;
             }
         }
 
-             public TLAbsFileLocation photo_small {get;set;}
-     public TLAbsFileLocation photo_big {get;set;}
+             public long exchange_id {get;set;}
+     public byte[] g_b {get;set;}
+     public long key_fingerprint {get;set;}
 
 
 		public void ComputeFlags()
@@ -29,16 +30,18 @@ namespace TeleSharp.TL
 
         public override void DeserializeBody(BinaryReader br)
         {
-            photo_small = (TLAbsFileLocation)ObjectUtils.DeserializeObject(br);
-photo_big = (TLAbsFileLocation)ObjectUtils.DeserializeObject(br);
+            exchange_id = br.ReadInt64();
+g_b = BytesUtil.Deserialize(br);
+key_fingerprint = br.ReadInt64();
 
         }
 
         public override void SerializeBody(BinaryWriter bw)
         {
 			bw.Write(Constructor);
-            ObjectUtils.SerializeObject(photo_small,bw);
-ObjectUtils.SerializeObject(photo_big,bw);
+            bw.Write(exchange_id);
+BytesUtil.Serialize(g_b,bw);
+bw.Write(key_fingerprint);
 
         }
     }
