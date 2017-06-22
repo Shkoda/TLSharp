@@ -7,6 +7,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Ionic.Zlib;
+using TeleSharp.TL;
 using TLSharp.Core.MTProto;
 using TLSharp.Core.MTProto.Crypto;
 using TLSharp.Core.Requests;
@@ -39,7 +40,7 @@ namespace TLSharp.Core.Network
             return confirmed ? _session.Sequence++ * 2 + 1 : _session.Sequence * 2;
         }
 
-        public async Task Send(TeleSharp.TL.TLMethod request)
+        public async Task Send(TeleSharp.TL.TLMethod request, byte[] key = null)
         {
             // TODO: refactor
             if (needConfirmation.Any())
@@ -49,7 +50,7 @@ namespace TLSharp.Core.Network
                 using (var writer = new BinaryWriter(memory))
                 {
                     ackRequest.SerializeBody(writer);
-                    await Send(memory.ToArray(), ackRequest);
+                    await Send(memory.ToArray(), ackRequest, key);
                     needConfirmation.Clear();
                 }
             }
@@ -65,11 +66,10 @@ namespace TLSharp.Core.Network
             _session.Save();
         }
 
-        public async Task Send(byte[] packet, TeleSharp.TL.TLMethod request)
+        public async Task Send(byte[] packet, TeleSharp.TL.TLMethod request, byte[] msgKey = null)
         {
             request.MessageId = _session.GetNewMessageId();
 
-            byte[] msgKey;
             byte[] ciphertext;
             using (MemoryStream plaintextPacket = makeMemory(8 + 8 + 8 + 4 + 4 + packet.Length))
             {
@@ -82,7 +82,7 @@ namespace TLSharp.Core.Network
                     plaintextWriter.Write(packet.Length);
                     plaintextWriter.Write(packet);
 
-                    msgKey = Helpers.CalcMsgKey(plaintextPacket.GetBuffer());
+                    msgKey = msgKey ?? Helpers.CalcMsgKey(plaintextPacket.GetBuffer());
                     ciphertext = AES.EncryptAES(Helpers.CalcKey(_session.AuthKey.Data, msgKey, true), plaintextPacket.GetBuffer());
                 }
             }
@@ -147,6 +147,40 @@ namespace TLSharp.Core.Network
 
             return null;
         }
+        
+        public async Task<TLUpdates> Receive()
+        {
+       
+                var result = DecodeMessage((await _transport.Receieve()).Body);
+     
+            
+                using (var messageStream = new MemoryStream(result.Item1, false))
+                using (var messageReader = new BinaryReader(messageStream))
+                {
+                    uint code = messageReader.ReadUInt32();  Console.WriteLine($"udate code = {code}");
+                    messageReader.BaseStream.Position -= 4;
+                  return (TLUpdates)ObjectUtils.DeserializeObject(messageReader);
+                    //1957577280 -- updates code
+                    
+                    
+//                    switch (code)
+//                    {
+//                        case 0xe317af7e:
+//                        case 0xd3f45784:
+//                        case 0x2b2fbd4e:
+//                        case 0x78d4dec1:
+//                        case 0x725b04c3:
+//                        case 0x74ae4240:
+//                          
+//                            return HandleUpdate(messageId, sequence, messageReader);
+//                    }
+                    //   processMessage(result.Item2, result.Item3, messageReader, request);
+                }
+            
+
+     //       return result;
+        }
+
 
 
    

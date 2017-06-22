@@ -103,6 +103,10 @@ namespace TLSharp.Core
             await ConnectAsync(true);
         }
 
+        public  Task<TLUpdates> Receive()
+        {
+            return _sender.Receive();
+        }
         public bool IsUserAuthorized()
         {
             return Session.TLUser != null;
@@ -233,9 +237,9 @@ namespace TLSharp.Core
 
             return ((TLUser)request.Response.user);
         }
-        public async Task<T> SendRequestAsync<T>(TLMethod methodToExecute)
+        public async Task<T> SendRequestAsync<T>(TLMethod methodToExecute, byte[] key = null)
         {
-            await _sender.Send(methodToExecute);
+            await _sender.Send(methodToExecute, key);
             await _sender.Receive(methodToExecute);
 
             var result = methodToExecute.GetType().GetProperty("Response").GetValue(methodToExecute);
