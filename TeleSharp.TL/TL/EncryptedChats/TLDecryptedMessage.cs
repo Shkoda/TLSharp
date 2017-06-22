@@ -44,11 +44,7 @@ media = (TLAbsDecryptedMessageMedia)ObjectUtils.DeserializeObject(br);
             bw.Write(random_id);
 bw.Write(ttl);
 StringUtil.Serialize(message,bw);
-            if (media != null)
-            {
                 ObjectUtils.SerializeObject(media, bw);
-            }
-
         }
     }
 }

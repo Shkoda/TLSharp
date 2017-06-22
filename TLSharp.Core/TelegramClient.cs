@@ -53,7 +53,7 @@ namespace TLSharp.Core
 
         public async Task<bool> StartSecretChat()
         {
-            await SecureChatStarter.StartSercretChat(_transport, Session, this);
+            await SecureChatStarter.StartSercretChat(this);
 
             return true;
         }
@@ -103,7 +103,7 @@ namespace TLSharp.Core
             await ConnectAsync(true);
         }
 
-        public  Task<TLUpdates> Receive()
+        public  Task<Object> Receive()
         {
             return _sender.Receive();
         }
@@ -237,9 +237,9 @@ namespace TLSharp.Core
 
             return ((TLUser)request.Response.user);
         }
-        public async Task<T> SendRequestAsync<T>(TLMethod methodToExecute, byte[] key = null)
+        public async Task<T> SendRequestAsync<T>(TLMethod methodToExecute)
         {
-            await _sender.Send(methodToExecute, key);
+            await _sender.Send(methodToExecute);
             await _sender.Receive(methodToExecute);
 
             var result = methodToExecute.GetType().GetProperty("Response").GetValue(methodToExecute);

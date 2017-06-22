@@ -1,115 +1,169 @@
 ﻿using System;
 using System.IO;
 using System.Linq;
-using System.Security.Cryptography;
 using System.Threading.Tasks;
 using TeleSharp.TL;
 using TeleSharp.TL.Messages;
 using TLSharp.Core.MTProto.Crypto;
-using TLSharp.Core.Network;
 using TLSharp.Core.Utils;
 
 namespace TLSharp.Core.Auth.SecureChat
 {
     public class SecureChatStarter
     {
-        private static BigInteger dh_prime;
-        private static BigInteger a;
+        private static BigInteger _dhPrime;
+        private static BigInteger _a;
         private static BigInteger _ga;
-        private static int _randomId;
         private static BigInteger _gb;
-        private static BigInteger _key;
+        private static BigInteger _gab;
+        private static AuthKey _authKey;
 
-        public static async Task StartSercretChat(TcpTransport transport, Session session, TelegramClient client)
+        public static async Task StartSercretChat(TelegramClient client)
         {
             var dhConfig = await GetConfig(client);
 
             var newConfig = dhConfig as TLDhConfig;
-            dh_prime = new BigInteger(1, newConfig.p);
-            a = new BigInteger(2048, new Random());
-            _ga = BigInteger.ValueOf(newConfig.g).ModPow(a, dh_prime);
-            _randomId = new Random().Next(Int32.MaxValue);
-      
-            var chat =  await client.SendRequestAsync<TLAbsEncryptedChat>(new TLRequestRequestEncryption
-            {
-                g_a = _ga.ToByteArray(),
-                random_id = _randomId,
-                user_id = new TLInputUser
-                {
-                    user_id = -1 //todo use real user id
-                }
-            });
-            var updates = await client.Receive();
-            
-            
 
-         var updateEncryption =  (TLUpdateEncryption)  updates.updates.lists[0];
-        var acceptedChat =  (TLEncryptedChat) updateEncryption.chat;
+            _dhPrime = new BigInteger(1, newConfig.p);
+            _a = new BigInteger(2048, new Random());
+            _ga = BigInteger.ValueOf(newConfig.g).ModPow(_a, _dhPrime);
+
+            var acceptedChat = await RequestChat(client, -1); //todo use real user id
 
             _gb = new BigInteger(1, acceptedChat.g_a_or_b);
-            _key = _gb.ModPow(a, dh_prime);
- 
-         
-            var plain = new TLDecryptedMessage
-            {
-                message = "I like eels"
-            };
-            var decryptedMessage = new TLDecryptedMessageLayer
-            {
-                layer = 23,
-                message = plain,
-                random_bytes = new BigInteger(20, new Random()).ToByteArray()
-            };
-            
-      
-            var keyBytes = _key.ToByteArrayUnsigned();
-            var paddedKeyBytes = new byte[256];
-            Array.Copy(_key.ToByteArrayUnsigned(), 0, paddedKeyBytes, paddedKeyBytes.Length-keyBytes.Length, keyBytes.Length);
-            
-            byte[] msgKey;
-            using (SHA1 hash = new SHA1Managed())
-            {
-                using (MemoryStream hashStream = new MemoryStream(hash.ComputeHash(paddedKeyBytes), false))
-                {
-                    using (BinaryReader hashReader = new BinaryReader(hashStream))
-                    {
-                      msgKey = hashReader.ReadBytes(16);
-         
-                    }
-                }
-            }
-            var aesKey = Helpers.CalcKey(_key.ToByteArrayUnsigned(), msgKey, false);
+            _gab = _gb.ModPow(_a, _dhPrime);
+            _authKey = new AuthKey(_gab);
 
+            var textMessageId = Helpers.GenerateRandomLong();
+            var plainMessage = GetGefaultPlainMessage(textMessageId);
+            var paddedPlainBytes = SerializePlainMessage(plainMessage);
 
-            byte[] decryptedBytes;
-            using (var memory = new MemoryStream())
-            using (var writer = new BinaryWriter(memory))
+            var msgKey = Helpers.CalcMsgKey(paddedPlainBytes);
+            var aesKeyData = Helpers.CalcKey(_authKey.Data, msgKey, true);
+
+            var encryptedBytes = AES.EncryptAES(aesKeyData, paddedPlainBytes);
+
+            var chipherBytesWithKeys = GetEncryptedBytesWithKeys(encryptedBytes, msgKey, _authKey.Id);
+
+            var sendEncryptedMessageRequest = CreateSendEncryptedMessageRequest(chipherBytesWithKeys, acceptedChat,
+                textMessageId);
+
+            var sentMessage = await client.SendRequestAsync<TLSentEncryptedMessage>(sendEncryptedMessageRequest);
+
+            while (true)
             {
-                decryptedMessage.SerializeBody(writer);
-               decryptedBytes =  memory.ToArray();
+                var r = await client.Receive();
+                if (r.GetType() != typeof (TLUpdateShort))
+                    Console.WriteLine($"received {r.GetType()}");
             }
 
-            
-            
-            var encryptAes = AES.EncryptAES(aesKey, decryptedBytes);
 
-         var sendEncryptedMessageRequest = new TLRequestSendEncrypted
+            Console.WriteLine($"acceptedChat: {acceptedChat.GetType()} ");
+            Console.WriteLine($"sent message {sentMessage.Constructor}");
+        }
+
+        private static TLRequestSendEncrypted CreateSendEncryptedMessageRequest(byte[] chipherBytesWithKeys,
+            TLEncryptedChat acceptedChat, long textMessageId)
+        {
+            var sendEncryptedMessageRequest = new TLRequestSendEncrypted
             {
-                data = encryptAes,
+                data = chipherBytesWithKeys,
                 peer = new TLInputEncryptedChat
                 {
                     access_hash = acceptedChat.access_hash,
                     chat_id = acceptedChat.id
-                }
-                ,
-                random_id = Helpers.GenerateRandomLong()
+                },
+                random_id = textMessageId
             };
+            return sendEncryptedMessageRequest;
+        }
 
-           var sentMessage = await client.SendRequestAsync<TLSentEncryptedMessage>(sendEncryptedMessageRequest);
-     
+        private static byte[] GetEncryptedBytesWithKeys(byte[] encryptedBytes, byte[] msgKey, ulong keyFingerprint)
+        {
+            var length = 8 + 16 + encryptedBytes.Length;
+            byte[] chipherBytesWithKeys;
+            using (var ciphertextPacket = new MemoryStream(new byte[length], 0, length, true, true))
+            {
+                using (var writer = new BinaryWriter(ciphertextPacket))
+                {
+                    writer.Write(keyFingerprint);
+                    writer.Write(msgKey);
+                    writer.Write(encryptedBytes);
 
-            Console.WriteLine($"chat: {chat.GetType()} access_hash={chat.a});
-            Console.WriteLine($"sent message {sentMessage.Constructor}");
+                    chipherBytesWithKeys = (ciphertextPacket.GetBuffer());
+                }
+            }
+            return chipherBytesWithKeys;
+        }
+
+        private static byte[] SerializePlainMessage(TLDecryptedMessageLayer plainMessage)
+        {
+            var plainBytes = plainMessage.Serialize();
+            byte[] paddedPlainBytes;
+
+            var paddedArrayLength = 4 + plainBytes.Length;
+            using (var plaintextPacket = new MemoryStream(new byte[paddedArrayLength], 0, paddedArrayLength, true,true))
+            {
+                using (var plaintextWriter = new BinaryWriter(plaintextPacket))
+                {
+                    plaintextWriter.Write(plainBytes.Length);
+                    plaintextWriter.Write(plainBytes);
+                    paddedPlainBytes = plaintextPacket.GetBuffer();
+                }
+            }
+            return paddedPlainBytes;
+        }
+
+        private static TLDecryptedMessageLayer GetGefaultPlainMessage(long textMessageId)
+        {
+            var plainMessage = new TLDecryptedMessageLayer
+            {
+                layer = 23,
+                message = new TLDecryptedMessage
+                {
+                    random_id = textMessageId,
+                    message = "I like eels",
+                    media = new TLDecryptedMessageMediaEmpty()
+                },
+                random_bytes = Helpers.GenerateRandomBytes(20),
+                in_seq_no = 0,
+                out_seq_no = 1
+            };
+            return plainMessage;
+        }
+
+        private static async Task<TLEncryptedChat> RequestChat(TelegramClient client, int recepientId)
+        {
+            var chatResponce = await client.SendRequestAsync<TLAbsEncryptedChat>(new TLRequestRequestEncryption
+            {
+                g_a = _ga.ToByteArray(),
+                random_id = (int) Helpers.GenerateRandomLong(),
+                user_id = new TLInputUser
+                {
+                    user_id = recepientId
+                }
+            });
+            if (chatResponce.GetType() == typeof (TLEncryptedChat))
+                return chatResponce as TLEncryptedChat;
+
+            while (true)
+            {
+                var somethingFromServer = await client.Receive();
+
+                if (somethingFromServer.GetType() == typeof (TLUpdateShort))
+                {
+                    Console.WriteLine($"short update");
+                    continue;
+                }
+
+                var updates = (TLUpdates) somethingFromServer;
+                var acceptedChat =
+                    (updates.updates.lists.FirstOrDefault(u => u.GetType() == typeof (TLUpdateEncryption))) as
+                        TLUpdateEncryption;
+
+                if (acceptedChat != null)
+                    return (TLEncryptedChat) acceptedChat.chat;
+            }
         }
 
         private static async Task<TLAbsDhConfig> GetConfig(TelegramClient client)
@@ -118,26 +172,17 @@ namespace TLSharp.Core.Auth.SecureChat
             if (getConfigResponce is TLDhConfig)
             {
                 var newConfig = getConfigResponce as TLDhConfig;
-                Console.WriteLine($"new dh config received: g={newConfig.g}, dh_prime={ToString(newConfig.p)}");
+                Console.WriteLine($"new dh config received");
                 return newConfig;
             }
-            else if (getConfigResponce is TLDhConfigNotModified)
+            if (getConfigResponce is TLDhConfigNotModified)
             {
                 var notMoodifiedewConfig = getConfigResponce as TLDhConfigNotModified;
                 Console.WriteLine($"not modified config received {notMoodifiedewConfig.random}");
                 return notMoodifiedewConfig;
             }
-            else
-            {
-                Console.WriteLine($"failed to obtain dh config");
-                return null;
-            }
-
-        }
-
-        private static string ToString<T>(T[] arr)
-        {
-            return arr.Aggregate("", (acc, current) => acc += current.ToString() + " ");
+            Console.WriteLine($"failed to obtain dh config");
+            return null;
         }
     }
 }

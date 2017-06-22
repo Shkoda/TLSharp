@@ -35,7 +35,7 @@ namespace ConsoleApplication
       
             Console.WriteLine($"starting secret chat...");
             await client.StartSecretChat();
-         //   await ShowContacts(client);
+        //    await ShowContacts(client);
 
             Console.WriteLine($"Press enter to terminate...");
             Console.ReadLine();
