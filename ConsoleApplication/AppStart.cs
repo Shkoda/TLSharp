@@ -1,9 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using TeleSharp.TL;
+using TeleSharp.TL.Messages;
 using TLSharp.Core;
+using TLSharp.Core.Utils;
 
 namespace ConsoleApplication
 {
@@ -29,14 +32,77 @@ namespace ConsoleApplication
                 var code = Console.ReadLine();
     
                 var user = await client.MakeAuthAsync(creds.PhoneNumber, hash, code);
-                Console.WriteLine($"auth as @{user.username} [{user.first_name}]");
+                Console.WriteLine($"auth as @{user.username} [{user.first_name}] id={user.id}");
             }
 
       
-            Console.WriteLine($"starting secret chat...");
-            await client.StartSecretChat();
+        //    Console.WriteLine($"starting secret chat...");
+         //   await client.StartSecretChat();
         //    await ShowContacts(client);
 
+
+            var keyboard = new TLReplyKeyboardMarkup
+            {
+               rows = new TLVector<TLKeyboardButtonRow>
+                {
+                    lists = new List<TLKeyboardButtonRow>
+                    {
+                        new TLKeyboardButtonRow
+                        {
+                            buttons = new TLVector<TLAbsKeyboardButton>
+                            {
+                                lists = new List<TLAbsKeyboardButton>
+                                {
+                                    new TLKeyboardButton()
+                                    {
+                                        text = "yooohooo"
+                                    },
+                                    new TLKeyboardButton()
+                                    {
+                                        text = "woooow"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                
+            };
+   
+
+            var resp = await client.SendRequestAsync<TLObject>(new TLRequestSendMessage
+            {
+                peer = new TLInputPeerUser
+                {
+                    user_id = -1,
+                   
+                },
+                message = "it is c# =) qwerty",
+                random_id = Helpers.GenerateRandomLong(),
+                reply_markup = keyboard,
+                
+                entities = new TLVector<TLAbsMessageEntity>
+                {
+                    lists = new List<TLAbsMessageEntity>
+                    {
+                        new TLMessageEntityBold
+                        {
+                            offset = 0,
+                            length = 8
+                        },
+                    
+                    }
+                }
+                
+                
+            });
+
+            while (true)
+            {
+                Console.WriteLine($"waiting...");
+                var upd = await client.Receive();
+                Console.WriteLine($"update {upd.GetType()}");
+            }
             Console.WriteLine($"Press enter to terminate...");
             Console.ReadLine();
         }

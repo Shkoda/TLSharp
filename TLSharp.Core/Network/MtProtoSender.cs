@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reactive.Subjects;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -23,11 +24,27 @@ namespace TLSharp.Core.Network
         private Session _session;
 
         public List<ulong> needConfirmation = new List<ulong>();
+        
+        private Subject<TLObject> _receivedStream = new Subject<TLObject>();
+        
 
         public MtProtoSender(TcpTransport transport, Session session)
         {
             _transport = transport;
             _session = session;
+
+//            Task.Run(async () =>
+//            {
+//                while (true)
+//                {
+//                    Console.WriteLine("waiting...");
+//                    var someUpdate = await Receive();
+//                    Console.WriteLine($"{someUpdate.GetType()} was received");
+//                    _receivedStream.OnNext(someUpdate);
+//                    Thread.Sleep(500);
+//                }
+//
+//            });
         }
 
         public void ChangeTransport(TcpTransport transport)
@@ -151,7 +168,9 @@ namespace TLSharp.Core.Network
             return null;
         }
         
-        public async Task<Object> Receive()
+        
+        
+        public async Task<TLObject> Receive()
         {
        
                 var result = DecodeMessage((await _transport.Receieve()).Body);
@@ -162,7 +181,7 @@ namespace TLSharp.Core.Network
                 {
                     uint code = messageReader.ReadUInt32();  Console.WriteLine($"udate code = {code}");
                     messageReader.BaseStream.Position -= 4;
-                  return (Object)ObjectUtils.DeserializeObject(messageReader);
+                  return (TLObject) ObjectUtils.DeserializeObject(messageReader);
                     //1957577280 -- updates code
                     
                     

@@ -33,6 +33,8 @@ namespace TLSharp.Core.Auth.SecureChat
             _gb = new BigInteger(1, acceptedChat.g_a_or_b);
             _gab = _gb.ModPow(_a, _dhPrime);
             _authKey = new AuthKey(_gab);
+            
+            
 
             var textMessageId = Helpers.GenerateRandomLong();
             var plainMessage = GetGefaultPlainMessage(textMessageId);
@@ -131,6 +133,7 @@ namespace TLSharp.Core.Auth.SecureChat
             };
             return plainMessage;
         }
+       
 
         private static async Task<TLEncryptedChat> RequestChat(TelegramClient client, int recepientId)
         {
@@ -166,6 +169,7 @@ namespace TLSharp.Core.Auth.SecureChat
             }
         }
 
+        
         private static async Task<TLAbsDhConfig> GetConfig(TelegramClient client)
         {
             var getConfigResponce = await client.SendRequestAsync<TLAbsDhConfig>(new TLRequestGetDhConfig());

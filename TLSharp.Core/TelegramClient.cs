@@ -86,6 +86,8 @@ namespace TLSharp.Core
 
             dcOptions = ((TLConfig)invokewithLayer.Response).dc_options.lists;
 
+            
+            Console.WriteLine($"user = @{_session.TLUser.username} [{_session.TLUser.first_name}] id={_session.TLUser.id}");
             return true;
         }
 
@@ -103,7 +105,7 @@ namespace TLSharp.Core
             await ConnectAsync(true);
         }
 
-        public  Task<Object> Receive()
+        public  Task<TLObject> Receive()
         {
             return _sender.Receive();
         }
