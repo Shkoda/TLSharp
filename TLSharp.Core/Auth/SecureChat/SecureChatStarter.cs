@@ -6,6 +6,7 @@ using TeleSharp.TL;
 using TeleSharp.TL.Messages;
 using TLSharp.Core.MTProto.Crypto;
 using TLSharp.Core.Utils;
+using static System.Int32;
 
 namespace TLSharp.Core.Auth.SecureChat
 {
@@ -30,19 +31,19 @@ namespace TLSharp.Core.Auth.SecureChat
 
             var acceptedChat = await RequestChat(client, -1); //todo use real user id
 
+
             _gb = new BigInteger(1, acceptedChat.g_a_or_b);
             _gab = _gb.ModPow(_a, _dhPrime);
             _authKey = new AuthKey(_gab);
-            
-            
 
             var textMessageId = Helpers.GenerateRandomLong();
             var plainMessage = GetGefaultPlainMessage(textMessageId);
-            var paddedPlainBytes = SerializePlainMessage(plainMessage);
+            var plainBytesAndLength = SerializePlainMessage(plainMessage);
 
-            var msgKey = Helpers.CalcMsgKey(paddedPlainBytes);
+            var msgKey = Helpers.CalcMsgKey(plainBytesAndLength);
             var aesKeyData = Helpers.CalcKey(_authKey.Data, msgKey, true);
 
+            var paddedPlainBytes = BuildPaddedPlainBytes(plainBytesAndLength);
             var encryptedBytes = AES.EncryptAES(aesKeyData, paddedPlainBytes);
 
             var chipherBytesWithKeys = GetEncryptedBytesWithKeys(encryptedBytes, msgKey, _authKey.Id);
@@ -64,6 +65,19 @@ namespace TLSharp.Core.Auth.SecureChat
             Console.WriteLine($"sent message {sentMessage.Constructor}");
         }
 
+        private static byte[] BuildPaddedPlainBytes(byte[] plainBytesAndLength)
+        {
+            var plainLength = plainBytesAndLength.Length;
+            var padding = (16 - plainLength%16) % 16;
+            var paddedPlainBytesAndLength = new byte[plainLength + padding];
+
+            Array.Copy(plainBytesAndLength, 0, paddedPlainBytesAndLength, 0, plainLength);
+
+            var paddingBytes = Helpers.GenerateRandomBytes(padding);
+            Array.Copy(paddingBytes, 0, paddedPlainBytesAndLength, plainLength, padding);
+            return paddedPlainBytesAndLength;
+        }
+
         private static TLRequestSendEncrypted CreateSendEncryptedMessageRequest(byte[] chipherBytesWithKeys,
             TLEncryptedChat acceptedChat, long textMessageId)
         {
@@ -72,7 +86,7 @@ namespace TLSharp.Core.Auth.SecureChat
                 data = chipherBytesWithKeys,
                 peer = new TLInputEncryptedChat
                 {
-                    access_hash = acceptedChat.access_hash,
+                     access_hash = acceptedChat.access_hash,
                     chat_id = acceptedChat.id
                 },
                 random_id = textMessageId
@@ -101,7 +115,7 @@ namespace TLSharp.Core.Auth.SecureChat
         private static byte[] SerializePlainMessage(TLDecryptedMessageLayer plainMessage)
         {
             var plainBytes = plainMessage.Serialize();
-            byte[] paddedPlainBytes;
+            byte[] plainBytesAndLength;
 
             var paddedArrayLength = 4 + plainBytes.Length;
             using (var plaintextPacket = new MemoryStream(new byte[paddedArrayLength], 0, paddedArrayLength, true,true))
@@ -110,10 +124,10 @@ namespace TLSharp.Core.Auth.SecureChat
                 {
                     plaintextWriter.Write(plainBytes.Length);
                     plaintextWriter.Write(plainBytes);
-                    paddedPlainBytes = plaintextPacket.GetBuffer();
+                    plainBytesAndLength = plaintextPacket.GetBuffer();
                 }
             }
-            return paddedPlainBytes;
+            return plainBytesAndLength;
         }
 
         private static TLDecryptedMessageLayer GetGefaultPlainMessage(long textMessageId)
@@ -125,8 +139,9 @@ namespace TLSharp.Core.Auth.SecureChat
                 {
                     random_id = textMessageId,
                     message = "I like eels",
-                    media = new TLDecryptedMessageMediaEmpty()
-                },
+                    media = new TLDecryptedMessageMediaEmpty(),
+                    ttl = 1200
+                   },
                 random_bytes = Helpers.GenerateRandomBytes(20),
                 in_seq_no = 0,
                 out_seq_no = 1
