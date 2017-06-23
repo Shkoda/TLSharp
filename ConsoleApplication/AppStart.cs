@@ -37,13 +37,33 @@ namespace ConsoleApplication
 
       
         //    Console.WriteLine($"starting secret chat...");
-         //   await client.StartSecretChat();
-        //    await ShowContacts(client);
+            await client.StartSecretChat();
+        //   await ShowContacts(client);
 
 
+            Console.WriteLine($"Press enter to terminate...");
+            Console.ReadLine();
+        }
+
+        private static async Task ShowContacts(TelegramClient client)
+        {
+            var result = await client.GetContactsAsync();
+
+
+            result.users.lists
+                .Where(x => x.GetType() == typeof(TLUser))
+                .Cast<TLUser>()
+                  .ToList()
+                 .ForEach(u => Console.WriteLine($"@{u.username} [{u.first_name}] {u.phone} {u.id}"));
+
+            
+        }
+
+        private static async Task TryKeyboard(TelegramClient client)
+        {
             var keyboard = new TLReplyKeyboardMarkup
             {
-               rows = new TLVector<TLKeyboardButtonRow>
+                rows = new TLVector<TLKeyboardButtonRow>
                 {
                     lists = new List<TLKeyboardButtonRow>
                     {
@@ -66,21 +86,21 @@ namespace ConsoleApplication
                         }
                     }
                 }
-                
+
             };
-   
+
 
             var resp = await client.SendRequestAsync<TLObject>(new TLRequestSendMessage
             {
                 peer = new TLInputPeerUser
                 {
                     user_id = -1,
-                   
+
                 },
                 message = "it is c# =) qwerty",
                 random_id = Helpers.GenerateRandomLong(),
                 reply_markup = keyboard,
-                
+
                 entities = new TLVector<TLAbsMessageEntity>
                 {
                     lists = new List<TLAbsMessageEntity>
@@ -90,11 +110,11 @@ namespace ConsoleApplication
                             offset = 0,
                             length = 8
                         },
-                    
+
                     }
                 }
-                
-                
+
+
             });
 
             while (true)
@@ -103,22 +123,6 @@ namespace ConsoleApplication
                 var upd = await client.Receive();
                 Console.WriteLine($"update {upd.GetType()}");
             }
-            Console.WriteLine($"Press enter to terminate...");
-            Console.ReadLine();
-        }
-
-        private static async Task ShowContacts(TelegramClient client)
-        {
-            var result = await client.GetContactsAsync();
-
-
-            result.users.lists
-                .Where(x => x.GetType() == typeof(TLUser))
-                .Cast<TLUser>()
-                  .ToList()
-                 .ForEach(u => Console.WriteLine($"@{u.username} [{u.first_name}] {u.phone} {u.id}"));
-
-            
         }
     }
 }
