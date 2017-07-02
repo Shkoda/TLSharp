@@ -7,22 +7,20 @@ using System.Threading.Tasks;
 using TeleSharp.TL;
 namespace TeleSharp.TL
 {
-	[TLObject(541931640)] 
-    //528568095
-    public class TLDecryptedMessage : TLAbsDecryptedMessage
+	[TLObject(-1438109059)]
+    public class TLDecryptedMessageServiceLayer8 : TLAbsDecryptedMessage
     {
         public override int Constructor
         {
             get
             {
-                return 541931640;
+                return -1438109059;
             }
         }
 
              public long random_id {get;set;}
-     public int ttl {get;set;}
-     public string message {get;set;}
-     public TLAbsDecryptedMessageMedia media {get;set;}
+        public byte[] random_bytes { get; set; }
+        public TLAbsDecryptedMessageAction action {get;set;}
 
 
 		public void ComputeFlags()
@@ -33,9 +31,8 @@ namespace TeleSharp.TL
         public override void DeserializeBody(BinaryReader br)
         {
             random_id = br.ReadInt64();
-ttl = br.ReadInt32();
-message = StringUtil.Deserialize(br);
-media = (TLAbsDecryptedMessageMedia)ObjectUtils.DeserializeObject(br);
+            random_bytes = BytesUtil.Deserialize(br);
+            action = (TLAbsDecryptedMessageAction)ObjectUtils.DeserializeObject(br);
 
         }
 
@@ -43,9 +40,9 @@ media = (TLAbsDecryptedMessageMedia)ObjectUtils.DeserializeObject(br);
         {
 			bw.Write(Constructor);
             bw.Write(random_id);
-bw.Write(ttl);
-StringUtil.Serialize(message,bw);
-                ObjectUtils.SerializeObject(media, bw);
+            BytesUtil.Serialize(random_bytes, bw);
+            ObjectUtils.SerializeObject(action,bw);
+
         }
     }
 }

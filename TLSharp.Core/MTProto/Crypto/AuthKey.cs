@@ -9,6 +9,9 @@ namespace TLSharp.Core.MTProto.Crypto
         private byte[] key;
         private ulong keyId;
         private ulong auxHash;
+        public byte[] FingerprintBytes => BitConverter.GetBytes(Fingerprint);
+        public ulong Fingerprint { get; }
+
         public AuthKey(BigInteger gab)
         {
             key = gab.ToByteArrayUnsigned();
@@ -21,6 +24,9 @@ namespace TLSharp.Core.MTProto.Crypto
                         auxHash = hashReader.ReadUInt64();
                         hashReader.ReadBytes(4);
                         keyId = hashReader.ReadUInt64();
+
+                        hashStream.Position = hashStream.Length - 8;
+                        Fingerprint = hashReader.ReadUInt64();
                     }
                 }
             }
@@ -38,6 +44,9 @@ namespace TLSharp.Core.MTProto.Crypto
                         auxHash = hashReader.ReadUInt64();
                         hashReader.ReadBytes(4);
                         keyId = hashReader.ReadUInt64();
+
+                        hashStream.Position = hashStream.Length - 8;
+                        Fingerprint = hashReader.ReadUInt64();
                     }
                 }
             }

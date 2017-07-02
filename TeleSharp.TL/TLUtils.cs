@@ -22,8 +22,54 @@ namespace TeleSharp.TL
             writer.Write(src);
         }
     }
-    public class BytesUtil
+    public static class BytesUtil
     {
+        private static Random Random = new Random();
+        private static byte[] GenerateRandomBytes(int num)
+        {
+            byte[] data = new byte[num];
+            Random.NextBytes(data);
+            return data;
+        }
+
+        public static byte[] WithLengthOnArrayStart(this byte[] array)
+        {
+            var newLength = 4 + array.Length;        
+
+            using (var stream = new MemoryStream(new byte[newLength], 0, newLength, true, true))
+            {
+                using (var plaintextWriter = new BinaryWriter(stream))
+                {
+                    plaintextWriter.Write(array.Length);
+                    plaintextWriter.Write(array);
+                    return stream.GetBuffer();
+                }
+            }
+        }
+
+        public static byte[] TrimWithLengthOnArrayStart(this byte[] paddedArrayWithLengthOnStart)
+        {
+            using (var plaintextStream = new MemoryStream(paddedArrayWithLengthOnStart))
+            using (var plaintextReader = new BinaryReader(plaintextStream))
+            {
+                var length = plaintextReader.ReadInt32();
+                return plaintextReader.ReadBytes(length);           
+            }
+        }
+
+        public static byte[] WithAligment(this byte[] array, int aligmentInBytes)
+        {
+            var length = array.Length;
+            var padding = (aligmentInBytes - length % aligmentInBytes) % aligmentInBytes;
+            var paddedPlainBytesAndLength = new byte[length + padding];
+
+            Array.Copy(array, 0, paddedPlainBytesAndLength, 0, length);
+
+            var paddingBytes =  GenerateRandomBytes(padding);
+            Array.Copy(paddingBytes, 0, paddedPlainBytesAndLength, length, padding);
+            return paddedPlainBytesAndLength;
+        }
+
         private static byte[] read(BinaryReader binaryReader)
         {
             byte firstByte = binaryReader.ReadByte();

@@ -7,21 +7,20 @@ using System.Threading.Tasks;
 using TeleSharp.TL;
 namespace TeleSharp.TL
 {
-	[TLObject(1538843921)]
-    public class TLMessage : TLObject
+	[TLObject(-1477445615)]
+    public class TLBad_msg_notification : TLAbsBadMsgNotification
     {
         public override int Constructor
         {
             get
             {
-                return 1538843921;
+                return -1477445615;
             }
         }
 
-             public long msg_id {get;set;}
-     public int seqno {get;set;}
-     public int bytes {get;set;}
-     public Object body {get;set;}
+             public long bad_msg_id {get;set;}
+     public int bad_msg_seqno {get;set;}
+     public int error_code {get;set;}
 
 
 		public void ComputeFlags()
@@ -31,20 +30,18 @@ namespace TeleSharp.TL
 
         public override void DeserializeBody(BinaryReader br)
         {
-            msg_id = br.ReadInt64();
-seqno = br.ReadInt32();
-bytes = br.ReadInt32();
-body = (Object)ObjectUtils.DeserializeObject(br);
+            bad_msg_id = br.ReadInt64();
+bad_msg_seqno = br.ReadInt32();
+error_code = br.ReadInt32();
 
         }
 
         public override void SerializeBody(BinaryWriter bw)
         {
 			bw.Write(Constructor);
-            bw.Write(msg_id);
-bw.Write(seqno);
-bw.Write(bytes);
-ObjectUtils.SerializeObject(body,bw);
+            bw.Write(bad_msg_id);
+bw.Write(bad_msg_seqno);
+bw.Write(error_code);
 
         }
     }

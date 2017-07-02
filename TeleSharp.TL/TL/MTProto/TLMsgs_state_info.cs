@@ -7,21 +7,19 @@ using System.Threading.Tasks;
 using TeleSharp.TL;
 namespace TeleSharp.TL
 {
-	[TLObject(1538843921)]
-    public class TLMessage : TLObject
+	[TLObject(81704317)]
+    public class TLMsgs_state_info : TLObject
     {
         public override int Constructor
         {
             get
             {
-                return 1538843921;
+                return 81704317;
             }
         }
 
-             public long msg_id {get;set;}
-     public int seqno {get;set;}
-     public int bytes {get;set;}
-     public Object body {get;set;}
+             public long req_msg_id {get;set;}
+     public byte[] info {get;set;}
 
 
 		public void ComputeFlags()
@@ -31,20 +29,16 @@ namespace TeleSharp.TL
 
         public override void DeserializeBody(BinaryReader br)
         {
-            msg_id = br.ReadInt64();
-seqno = br.ReadInt32();
-bytes = br.ReadInt32();
-body = (Object)ObjectUtils.DeserializeObject(br);
+            req_msg_id = br.ReadInt64();
+info = BytesUtil.Deserialize(br);
 
         }
 
         public override void SerializeBody(BinaryWriter bw)
         {
 			bw.Write(Constructor);
-            bw.Write(msg_id);
-bw.Write(seqno);
-bw.Write(bytes);
-ObjectUtils.SerializeObject(body,bw);
+            bw.Write(req_msg_id);
+BytesUtil.Serialize(info,bw);
 
         }
     }

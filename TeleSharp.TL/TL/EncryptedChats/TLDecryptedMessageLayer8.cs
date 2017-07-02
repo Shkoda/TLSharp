@@ -7,20 +7,26 @@ using System.Threading.Tasks;
 using TeleSharp.TL;
 namespace TeleSharp.TL
 {
-	[TLObject(541931640)] 
-    //528568095
-    public class TLDecryptedMessage : TLAbsDecryptedMessage
+	[TLObject(528568095)] 
+    public class TLDecryptedMessageLayer8 : TLAbsDecryptedMessage
     {
+        private static byte[] GenerateRandomBytes(int num)
+        {
+            byte[] data = new byte[num];
+            new Random().NextBytes(data);
+            return data;
+        }
+
         public override int Constructor
         {
             get
             {
-                return 541931640;
+                return 528568095;
             }
         }
 
              public long random_id {get;set;}
-     public int ttl {get;set;}
+        public byte[] random_bytes { get; set; }
      public string message {get;set;}
      public TLAbsDecryptedMessageMedia media {get;set;}
 
@@ -33,8 +39,8 @@ namespace TeleSharp.TL
         public override void DeserializeBody(BinaryReader br)
         {
             random_id = br.ReadInt64();
-ttl = br.ReadInt32();
-message = StringUtil.Deserialize(br);
+            random_bytes = BytesUtil.Deserialize(br);
+            message = StringUtil.Deserialize(br);
 media = (TLAbsDecryptedMessageMedia)ObjectUtils.DeserializeObject(br);
 
         }
@@ -43,8 +49,8 @@ media = (TLAbsDecryptedMessageMedia)ObjectUtils.DeserializeObject(br);
         {
 			bw.Write(Constructor);
             bw.Write(random_id);
-bw.Write(ttl);
-StringUtil.Serialize(message,bw);
+            BytesUtil.Serialize(random_bytes, bw);
+            StringUtil.Serialize(message,bw);
                 ObjectUtils.SerializeObject(media, bw);
         }
     }

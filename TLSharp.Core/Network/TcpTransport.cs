@@ -80,7 +80,7 @@ namespace TLSharp.Core.Network
 
             if (checksum != validChecksum)
             {
-                throw new InvalidOperationException("invalid checksum! skip");
+               Console.WriteLine("WARNING invalid checksum! Continue execution");
             }
 
             return new TcpMessage(seq, body);

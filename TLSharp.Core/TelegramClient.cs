@@ -48,7 +48,7 @@ namespace TLSharp.Core
             _handler = handler;
 
             Session = Session.TryLoadOrCreateNew(store, sessionUserId);
-            _transport = new TcpTransport(Session.ServerAddress, Session.Port, _handler);
+            Transport = new TcpTransport(Session.ServerAddress, Session.Port, _handler);
         }
 
         public async Task<bool> StartSecretChat()
@@ -62,12 +62,12 @@ namespace TLSharp.Core
         {
             if (Session.AuthKey == null || reconnect)
             {
-                var result = await Authenticator.DoAuthentication(_transport);
+                var result = await Authenticator.DoAuthentication(Transport);
                 Session.AuthKey = result.AuthKey;
                 Session.TimeOffset = result.TimeOffset;
             }
 
-            _sender = new MtProtoSender(_transport, Session);
+            _sender = new MtProtoSender(Transport, Session);
 
             //set-up layer
             var config = new TLRequestGetConfig();
@@ -84,10 +84,7 @@ namespace TLSharp.Core
             await _sender.Send(invokewithLayer);
             await _sender.Receive(invokewithLayer);
 
-            dcOptions = ((TLConfig)invokewithLayer.Response).dc_options.lists;
-
-            
-            Console.WriteLine($"user = @{_session.TLUser.username} [{_session.TLUser.first_name}] id={_session.TLUser.id}");
+            dcOptions = ((TLConfig) invokewithLayer.Response).dc_options.lists;
             return true;
         }
 
@@ -98,7 +95,7 @@ namespace TLSharp.Core
 
             var dc = dcOptions.First(d => d.id == dcId);
 
-            _transport = new TcpTransport(dc.ip_address, dc.port, _handler);
+            Transport = new TcpTransport(dc.ip_address, dc.port, _handler);
             Session.ServerAddress = dc.ip_address;
             Session.Port = dc.port;
 
@@ -249,6 +246,11 @@ namespace TLSharp.Core
             return (T)result;
         }
 
+        public async Task SendRequest(TLMethod methodToExecute)
+        {
+            await _sender.Send(methodToExecute);
+        }
+
         public async Task<TLContacts> GetContactsAsync()
         {
             if (!IsUserAuthorized())
@@ -352,7 +354,7 @@ namespace TLSharp.Core
 
                 Session.AuthKey = authKey;
                 Session.TimeOffset = timeOffset;
-                _transport = new TcpTransport(serverAddress, serverPort);
+                Transport = new TcpTransport(serverAddress, serverPort);
                 Session.ServerAddress = serverAddress;
                 Session.Port = serverPort;
                 await ConnectAsync();
@@ -411,9 +413,9 @@ namespace TLSharp.Core
         {
             get
             {
-                if (_transport == null)
+                if (Transport == null)
                     return false;
-                return _transport.IsConnected;
+                return Transport.IsConnected;
             }
         }
 
@@ -430,12 +432,25 @@ namespace TLSharp.Core
             }
         }
 
+        public TcpTransport Transport
+        {
+            get
+            {
+                return _transport;
+            }
+
+            set
+            {
+                _transport = value;
+            }
+        }
+
         public void Dispose()
         {
-            if (_transport != null)
+            if (Transport != null)
             {
-                _transport.Dispose();
-                _transport = null;
+                Transport.Dispose();
+                Transport = null;
             }
         }
     }

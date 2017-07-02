@@ -21,7 +21,8 @@ namespace TeleSharp.TL
             }
             catch(Exception ex)
             {
-                throw new InvalidDataException("Constructor Invalid Or Context.Init Not Called !", ex);
+               Console.WriteLine($"Constructor Invalid Or Context.Init Not Called! Constructor={Constructor}", ex);
+                return null;
             }
             if (t.IsSubclassOf(typeof(TLMethod)))
             {
@@ -33,7 +34,8 @@ namespace TeleSharp.TL
                 ((TLObject)obj).DeserializeBody(reader);
                 return obj;
             }
-            else throw new NotImplementedException("Weird Type : " + t.Namespace + " | " + t.Name);
+            Console.WriteLine("Weird Type : " + t.Namespace + " | " + t.Name);
+            return null;
         }
         public static void SerializeObject(object  obj,BinaryWriter writer)
         {
@@ -41,8 +43,15 @@ namespace TeleSharp.TL
         }
         public static TLVector<T> DeserializeVector<T>(BinaryReader reader)
         {
-            if (reader.ReadInt32() != 481674261) throw new InvalidDataException("Bad Constructor");
             TLVector<T> t = new TLVector<T>();
+            var constructor = reader.ReadInt32();
+            if (constructor != 481674261)
+            {
+
+                Console.WriteLine($"ObjectDeserializer.DeserializeVector fails with constructor {constructor}. Return empty vector, continue");
+                return t;
+            }
+    
             t.DeserializeBody(reader);
             return t;
         }

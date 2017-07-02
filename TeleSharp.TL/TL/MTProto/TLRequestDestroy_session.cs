@@ -7,21 +7,19 @@ using System.Threading.Tasks;
 using TeleSharp.TL;
 namespace TeleSharp.TL
 {
-	[TLObject(1538843921)]
-    public class TLMessage : TLObject
+	[TLObject(-414113498)]
+    public class TLRequestDestroy_session : TLMethod
     {
         public override int Constructor
         {
             get
             {
-                return 1538843921;
+                return -414113498;
             }
         }
 
-             public long msg_id {get;set;}
-     public int seqno {get;set;}
-     public int bytes {get;set;}
-     public Object body {get;set;}
+                public long session_id {get;set;}
+        public TLAbsDestroySessionRes Response{ get; set;}
 
 
 		public void ComputeFlags()
@@ -31,21 +29,20 @@ namespace TeleSharp.TL
 
         public override void DeserializeBody(BinaryReader br)
         {
-            msg_id = br.ReadInt64();
-seqno = br.ReadInt32();
-bytes = br.ReadInt32();
-body = (Object)ObjectUtils.DeserializeObject(br);
+            session_id = br.ReadInt64();
 
         }
 
         public override void SerializeBody(BinaryWriter bw)
         {
 			bw.Write(Constructor);
-            bw.Write(msg_id);
-bw.Write(seqno);
-bw.Write(bytes);
-ObjectUtils.SerializeObject(body,bw);
+            bw.Write(session_id);
 
         }
+		public override void deserializeResponse(BinaryReader br)
+		{
+			Response = (TLAbsDestroySessionRes)ObjectUtils.DeserializeObject(br);
+
+		}
     }
 }

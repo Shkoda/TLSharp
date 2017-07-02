@@ -25,7 +25,8 @@ namespace TeleSharp.Generator
             //string method = File.ReadAllText("constructor.tt");
             string Json = "";
             string url;
-            if (args.Count() == 0) url = "tl-schema.json"; else url = args[0];
+         //   if (args.Count() == 0) url = "tl-schema.json"; else url = args[0];
+            if (args.Count() == 0) url = "G:\\tl.json"; else url = args[0];
 
             Json = File.ReadAllText(url);
             FileStream file = File.OpenWrite("Result.cs");
@@ -421,6 +422,7 @@ namespace TeleSharp.Generator
         }
         public static FileStream MakeFile(string path)
         {
+            path = "G:\\C#Workspace\\TLSharpFork\\TeleSharp.TL\\MTProto\\" + path;
             if (!Directory.Exists(Path.GetDirectoryName(path)))
                 Directory.CreateDirectory(Path.GetDirectoryName(path));
             if (File.Exists(path))
